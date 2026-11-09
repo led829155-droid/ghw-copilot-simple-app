@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Palette</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='16' height='32' fill='%230F766E'/%3E%3Crect x='16' width='16' height='32' fill='%23C2410C'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --ink: #1c1917;
+      --paper: #fafaf9;
+      --muted: #44403c;
+      --line: #57534e;
+      --code: #f5f5f4;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #fafaf9;
+        --paper: #1c1917;
+        --muted: #d6d3d1;
+        --line: #a8a29e;
+        --code: #292524;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.4 system-ui, sans-serif;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem 1rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .brand { margin-right: auto; }
+    h1 {
+      margin: 0;
+      font-family: Palatino, "Palatino Linotype", Georgia, serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .brand p { margin: 0; color: var(--muted); font-size: 0.875rem; }
+    #status:not(:empty) { color: var(--ink); font-weight: 600; }
+    .modes {
+      display: flex;
+      gap: 0.15rem;
+      margin: 0;
+      padding: 0.2rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+    .mode {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-height: 2.5rem;
+      padding: 0 0.85rem;
+      border-radius: 999px;
+    }
+    .mode input {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .mode:focus-within,
+    :focus-visible {
+      outline: 2px solid #fafaf9;
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px #1c1917;
+    }
+    .mode:has(:checked) {
+      background: var(--ink);
+      color: var(--paper);
+    }
+    .actions { display: flex; gap: 0.5rem; }
+    button { font: inherit; cursor: pointer; }
+    .actions button {
+      min-height: 2.75rem;
+      padding: 0 1rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+    }
+    .actions .primary {
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
+    }
+    .board {
+      list-style: none;
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+    }
+    .swatch {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      min-width: 0;
+      min-height: 8rem;
+      padding: 1rem;
+      /* Color swatches are the content; keep them in forced-colors mode. */
+      forced-color-adjust: none;
+    }
+    .swatch button {
+      border: 0;
+      border-radius: 999px;
+      background: var(--chip);
+      color: var(--on-chip);
+      min-height: 2.75rem;
+    }
+    .lock {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 2.75rem;
+      padding: 0 0.7rem;
+    }
+    .lock[aria-pressed="true"] {
+      box-shadow: inset 0 0 0 2px var(--on-chip);
+    }
+    .hex {
+      padding: 0 1rem;
+      font-family: ui-monospace, monospace;
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+    }
+    #status:empty {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    dialog[open] {
+      display: grid;
+      gap: 1rem;
+      width: min(28rem, calc(100vw - 2rem));
+      padding: 1.25rem;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      color: var(--ink);
+    }
+    dialog:modal { overscroll-behavior: contain; }
+    dialog::backdrop {
+      background: rgb(0 0 0 / 0.45);
+      overflow: hidden;
+      overscroll-behavior: contain;
+    }
+    dialog h2 { margin: 0; font-size: 1.25rem; }
+    pre {
+      margin: 0;
+      padding: 0.75rem 1rem;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--code);
+      color: var(--ink);
+      font-family: ui-monospace, monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    dialog form { display: flex; justify-content: flex-end; gap: 0.5rem; }
+    dialog button {
+      min-height: 2.75rem;
+      padding: 0 1rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+    }
+    dialog button[value="copy"] {
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
+    }
+    @media (max-width: 700px) {
+      .board { flex-direction: column; }
+      .brand { flex-basis: 100%; }
+    }
+    @media (forced-colors: active) {
+      :focus-visible, .mode:focus-within {
+        outline: 2px solid Highlight;
+        box-shadow: none;
+      }
+      .swatch { border: 1px solid CanvasText; }
+      header, .actions button, .modes, dialog[open], pre {
+        border-color: ButtonText;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Palette</h1>
+      <p>Space generates a new palette. Click a hex to copy it.</p>
+      <p id="status" role="status"></p>
+    </div>
+    <fieldset class="modes">
+      <legend class="sr">Harmony</legend>
+      <label class="mode"><input type="radio" name="harmony" value="random"> Random</label>
+      <label class="mode"><input type="radio" name="harmony" value="complementary"> Complementary</label>
+      <label class="mode"><input type="radio" name="harmony" value="analogous" checked> Analogous</label>
+    </fieldset>
+    <div class="actions">
+      <button type="button" class="primary" id="generate">Generate</button>
+      <button type="button" id="export-open">Export CSS</button>
+    </div>
+  </header>
+  <ul class="board" id="board"></ul>
+  <dialog id="export" aria-labelledby="export-title" closedby="any">
+    <h2 id="export-title">CSS variables</h2>
+    <pre id="css"></pre>
+    <form method="dialog">
+      <button type="submit" value="copy" autofocus>Copy CSS</button>
+      <button type="submit" value="close">Close</button>
+    </form>
+  </dialog>
+  <script src="palette.js"></script>
+  <script>
+    const INK = '#1C1917';
+    const PAPER = '#FAFAF9';
+    const OPEN_LOCK = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.2-2.4"/></svg>';
+    const SHUT_LOCK = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+
+    const board = document.getElementById('board');
+    const status = document.getElementById('status');
+    const cssOut = document.getElementById('css');
+    const exportDialog = document.getElementById('export');
+    const locks = [false, false, false, false, false];
+    let colors = Palette.generatePalette('analogous', locks.map(() => null), () => 0.02);
+
+    function channel(v) {
+      const c = v / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    }
+    function lum(hex) {
+      const n = parseInt(hex.slice(1), 16);
+      return 0.2126 * channel(n >> 16) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
+    }
+    function contrast(a, b) {
+      const hi = Math.max(lum(a), lum(b));
+      const lo = Math.min(lum(a), lum(b));
+      return (hi + 0.05) / (lo + 0.05);
+    }
+    function chipColors(hex) {
+      const chip = contrast(hex, INK) >= contrast(hex, PAPER) ? INK : PAPER;
+      return { chip, on: chip === INK ? PAPER : INK };
+    }
+
+    let announceTimer;
+    function announce(message) {
+      clearTimeout(announceTimer);
+      status.textContent = message;
+      // Clear and restore so a repeated message is announced again.
+      announceTimer = setTimeout(() => {
+        if (status.textContent !== message) return;
+        status.textContent = '';
+        status.textContent = message;
+      }, 50);
+    }
+
+    function copyText(text) {
+      const fallback = () => {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.left = '-9999px';
+        document.body.appendChild(area);
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
+        if (!ok) throw new Error('copy failed');
+      };
+      if (!(navigator.clipboard && window.isSecureContext)) {
+        fallback();
+        return Promise.resolve();
+      }
+      let settled = false;
+      const pending = navigator.clipboard.writeText(text).then(() => { settled = true; }, fallback);
+      return new Promise((resolve, reject) => {
+        pending.then(resolve, reject);
+        setTimeout(() => {
+          if (settled) return;
+          try { fallback(); resolve(); } catch (err) { reject(err); }
+        }, 300);
+      });
+    }
+
+    function mode() {
+      return document.querySelector('input[name="harmony"]:checked').value;
+    }
+
+    function render(focusLock) {
+      board.replaceChildren();
+      colors.forEach((hex, i) => {
+        const { chip, on } = chipColors(hex);
+        const li = document.createElement('li');
+        li.className = 'swatch';
+        li.style.backgroundColor = hex;
+        li.style.setProperty('--chip', chip);
+        li.style.setProperty('--on-chip', on);
+
+        const lock = document.createElement('button');
+        lock.type = 'button';
+        lock.className = 'lock';
+        lock.setAttribute('aria-pressed', String(locks[i]));
+        lock.setAttribute('aria-label', (locks[i] ? 'Unlock' : 'Lock') + ' color ' + (i + 1) + ' ' + hex);
+        lock.innerHTML = locks[i] ? SHUT_LOCK : OPEN_LOCK;
+        if (locks[i]) lock.append(document.createTextNode(' Locked'));
+        lock.addEventListener('click', () => {
+          locks[i] = !locks[i];
+          render(i);
+        });
+
+        const hexBtn = document.createElement('button');
+        hexBtn.type = 'button';
+        hexBtn.className = 'hex';
+        hexBtn.textContent = hex;
+        hexBtn.setAttribute('aria-label', 'Copy ' + hex);
+        hexBtn.addEventListener('click', () => {
+          copyText(hex).then(() => {
+            announce('Copied ' + hex);
+            hexBtn.textContent = 'Copied';
+            setTimeout(() => {
+              if (hexBtn.isConnected && hexBtn.textContent === 'Copied') hexBtn.textContent = hex;
+            }, 1200);
+          });
+        });
+
+        li.append(lock, hexBtn);
+        board.append(li);
+      });
+      cssOut.textContent = Palette.toCssVariables(colors);
+      if (focusLock != null) board.querySelectorAll('.lock')[focusLock].focus();
+    }
+
+    function generate() {
+      if (locks.every(Boolean)) {
+        announce('All five colors are locked');
+        return;
+      }
+      const kept = colors.map((hex, i) => (locks[i] ? hex : null));
+      colors = Palette.generatePalette(mode(), kept);
+      render();
+    }
+
+    document.getElementById('generate').addEventListener('click', generate);
+    document.querySelectorAll('input[name="harmony"]').forEach((input) => {
+      input.addEventListener('change', () => { if (input.checked) generate(); });
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.code !== 'Space' || e.repeat) return;
+      if (e.target.closest('button, input, textarea, a, dialog')) return;
+      e.preventDefault();
+      generate();
+    });
+
+    document.getElementById('export-open').addEventListener('click', () => {
+      cssOut.textContent = Palette.toCssVariables(colors);
+      exportDialog.showModal();
+    });
+    exportDialog.addEventListener('close', () => {
+      const value = exportDialog.returnValue;
+      exportDialog.returnValue = '';
+      if (value === 'copy') copyText(cssOut.textContent).then(() => announce('Copied CSS variables'));
+    });
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      const outside = (e) => {
+        const r = exportDialog.getBoundingClientRect();
+        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      };
+      let pressedOutside = false;
+      exportDialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e); });
+      exportDialog.addEventListener('pointerup', (e) => {
+        if (pressedOutside && outside(e)) exportDialog.close();
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
